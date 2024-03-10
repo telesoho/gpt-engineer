@@ -35,6 +35,7 @@ from langchain.schema import (
     messages_to_dict,
 )
 from langchain_openai import AzureChatOpenAI, ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 
 from gpt_engineer.core.token_usage import TokenUsageLog
 
@@ -277,6 +278,8 @@ class AI:
                 streaming=self.streaming,
                 callbacks=[StreamingStdOutCallbackHandler()],
             )
+        elif self.model_name == "gemini-pro":
+            return ChatGoogleGenerativeAI(model="gemini-pro",convert_system_message_to_human=True)
 
         return ChatOpenAI(
             model=self.model_name,
@@ -341,3 +344,4 @@ class ClipboardAI(AI):
         logger.debug(f"Chat completion finished: {messages}")
 
         return messages
+
