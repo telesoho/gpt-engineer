@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import tempfile
 
 from pathlib import Path
@@ -39,7 +40,7 @@ class FileStore:
         for name, content in files.items():
             path = self.working_dir / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            with open(path, "w") as f:
+            with open(path, "w", encoding="utf-8") as f:
                 f.write(content)
         return self
 
