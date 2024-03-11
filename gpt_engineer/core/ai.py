@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 AI Module
 
@@ -24,6 +25,8 @@ from typing import List, Optional, Union
 import backoff
 import openai
 import pyperclip
+from rich.console import Console
+from rich.markdown import Markdown
 
 from langchain.callbacks.streaming_stdout import StreamingStdOutCallbackHandler
 from langchain.chat_models.base import BaseChatModel
@@ -136,6 +139,24 @@ class AI:
         ]
         return self.next(messages, step_name=step_name)
 
+    def print_message(self, messages):
+        """
+        Print the messages in the conversation.
+        """
+        console = Console()
+        for message in messages:
+            if isinstance(message, AIMessage):
+                console.print("🤖AI Message:", style="bold on green")
+                console.print(Markdown(message.content))
+            elif isinstance(message, HumanMessage):
+                console.print("👨Human Message:", style="bold on green")
+                console.print(Markdown(message.content))
+            elif isinstance(message, SystemMessage):
+                console.print("📡System Message:", style="bold on green")
+                console.print(message.content)
+            else:
+                console.print(message.content)
+
     def next(
         self,
         messages: List[Message],
@@ -178,6 +199,61 @@ class AI:
         logger.debug(f"Chat completion finished: {messages}")
 
         return messages
+
+    def _remove_continue_messages(self, messages: List[Message], target: str):
+        """
+        Remove all Human message that contain target string.
+
+        Parameters
+        ----------
+        messages : List[Message]
+            The list of messages to collapse.
+        target : str
+            The target string to remove.
+
+        Returns
+        -------
+        List[Message]
+            The list of messages after removing all Human message that contain target string.
+
+        """
+        removed_messages = []
+        if not messages:
+            return removed_messages
+        for current_message in messages[0:]:
+            if not (isinstance(current_message, HumanMessage) and target in current_message.content.strip()):
+                removed_messages.append(current_message)
+
+        return removed_messages
+
+    def _merge_message(self, messages: List[Message]):
+        """
+        Combine consecutive messages of the same type into a single message.
+        """
+        collapsed_messages = []
+        if not messages:
+            return collapsed_messages
+
+        previous_message = messages[0]
+        combined_content = previous_message.content
+
+        for current_message in messages[1:]:
+            if current_message.type == previous_message.type:
+                combined_content_lines = combined_content.split("\n") 
+                if combined_content_lines[-1] == "```":
+                    combined_content = "\n".join(combined_content_lines[:-1])
+                combined_content += current_message.content
+            else:
+                collapsed_messages.append(
+                    previous_message.__class__(content=combined_content)
+                )
+                previous_message = current_message
+                combined_content = current_message.content
+
+        collapsed_messages.append(previous_message.__class__(content=combined_content))
+        return collapsed_messages
+
+        
 
     def _collapse_messages(self, messages: List[Message]):
         """
@@ -319,8 +395,14 @@ class AI:
                 streaming=self.streaming,
                 callbacks=[StreamingStdOutCallbackHandler()],
             )
-        elif self.model_name == "gemini-pro":
-            return ChatGoogleGenerativeAI(model="gemini-pro",convert_system_message_to_human=True)
+
+        if "gemini-pro" in self.model_name:
+            return ChatGoogleGenerativeAI(
+                model=self.model_name,
+                temperature=self.temperature,
+                callbacks=[StreamingStdOutCallbackHandler()],
+                max_tokens_to_sample=4096,
+                convert_system_message_to_human=True)
 
         if "claude" in self.model_name:
             return ChatAnthropic(

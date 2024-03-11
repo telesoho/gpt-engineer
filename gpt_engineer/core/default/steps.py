@@ -137,6 +137,17 @@ def gen_code(
     preprompts = preprompts_holder.get_preprompts()
     messages = ai.start(setup_sys_prompt(preprompts), prompt, step_name=curr_fn())
     chat = messages[-1].content.strip()
+
+    while "this concludes a fully working implementation" not in chat:
+        messages = ai.next(messages=messages, prompt="continue: your text that was not finished", step_name=curr_fn())
+        chat = messages[-1].content.strip()
+
+    messages = ai._remove_continue_messages(messages=messages, target="continue: your text that was not finished")
+    messages = ai._merge_message(messages=messages)
+    ai.print_message(messages=messages)
+
+    chat = messages[-1].content.strip()
+
     memory[CODE_GEN_LOG_FILE] = chat
     files_dict = chat_to_files_dict(chat)
     return files_dict

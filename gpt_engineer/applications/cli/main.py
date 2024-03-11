@@ -299,7 +299,8 @@ def main(
 
     store.upload(files_dict)
 
-    print("Total api cost: $ ", ai.token_usage_log.usage_cost())
+    if "gemini-pro" not in model:
+        print("Total api cost: $ ", ai.token_usage_log.usage_cost())
 
 
 if __name__ == "__main__":
